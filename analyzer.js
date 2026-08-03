@@ -1,5 +1,4 @@
 // backend/analyzer.js
-console.log("Analyzer loaded with context-aware matching + weighted scoring");
 
 // Expanded pattern categories (vague phrases grouped)
 const patternDefinitions = [
