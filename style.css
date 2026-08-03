@@ -47,16 +47,37 @@ button {
     font-weight: bold;
 }
 
-/* Output styling */
+/* Output and results styling */
 
+#loading { margin: 10px 0; font-weight: bold; }
+.hidden { display: none; }
 
+#results { margin-top: 15px; }
 
-#output {
-    width: 95%;
-    background: #fff8dc;
-    color: #000080;
-    padding: 15px;
-    border-radius: 5px;
-    text-align: left;
-    border: 3px solid #000; /* Default border, overridden dynamically */
+.summary { display: flex; gap: 20px; flex-wrap: wrap; }
+.score-block { flex: 1 1 180px; background: #fff; padding: 12px; border-radius: 8px; text-align: center; }
+.stats-block { flex: 1 1 220px; background: #fff; padding: 12px; border-radius: 8px; }
+#scoreNumber { font-size: 36px; font-weight: bold; }
+.disclaimer { font-size: 12px; color: #333; }
+
+#claimsList { margin-top: 16px; }
+.claim { background: #fff; padding: 10px; border-radius: 6px; margin-bottom: 10px; display: flex; gap: 12px; align-items: center; }
+.claim .meta { width: 220px; }
+.claim .text { flex: 1 1 auto; }
+.badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+.badge.evidence { background: #e6ffed; color: #0a6b3d; border: 1px solid #b7f3c8; }
+.badge.vague { background: #fff7e6; color: #7a5700; border: 1px solid #ffdca8; }
+.badge.exag { background: #fff0f0; color: #8b0000; border: 1px solid #ffb3b3; }
+.badge.verify { background: #f0f7ff; color: #004e8c; border: 1px solid #cfe8ff; }
+
+.controls { text-align: left; }
+.control-row { display: flex; gap: 10px; margin-top: 8px; }
+#clearBtn { background: #666; }
+#analyzeBtn { background: #0077b6; }
+#error { color: #8b0000; font-weight: bold; margin-top: 8px; }
+
+@media (max-width: 600px) {
+  .summary { flex-direction: column; }
+  .claim { flex-direction: column; align-items: flex-start; }
+  .claim .meta { width: 100%; }
 }

@@ -7,12 +7,47 @@
 <body>
   
   <div class="container">
-    <h2>Resume Content Analyzer</h2>
-    <textarea id="resumeText" placeholder="Paste your resume here"></textarea><br>
-    <button type="button" onclick="analyzeResume()">Analyze</button>
-    <div id="output"></div>
-</div>
+    <h2>Resume Truth Checker</h2>
 
+    <div class="controls">
+      <textarea id="resumeText" placeholder="Paste your resume here"></textarea>
+      <div class="control-row">
+        <button id="clearBtn" type="button">Clear</button>
+        <button id="analyzeBtn" type="button">Analyze</button>
+      </div>
+      <div id="error" class="hidden"></div>
+    </div>
+
+    <div id="loading" class="hidden">Analyzing &hellip;</div>
+
+    <div id="results" class="hidden">
+      <div class="summary">
+        <div class="score-block">
+          <h3>Credibility Score</h3>
+          <div id="scoreNumber">--</div>
+          <div id="rating">--</div>
+          <p class="disclaimer">Score indicates evidence quality, not truth. It does not determine whether a resume is truthful.</p>
+        </div>
+        <div class="stats-block">
+          <h3>Summary</h3>
+          <ul id="summaryList">
+            <li>Total Claims: <span id="totalClaims">0</span></li>
+            <li>Evidence Supported: <span id="evidenceCount">0</span></li>
+            <li>Vague Claims: <span id="vagueCount">0</span></li>
+            <li>Potentially Exaggerated: <span id="exagCount">0</span></li>
+            <li>Requires Verification: <span id="verifyCount">0</span></li>
+            <li>Consistency Issues: <span id="consistencyCount">0</span></li>
+            <li>Skill Evidence Issues: <span id="skillCount">0</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="claimsList"></div>
+
+      <div id="suggestions"></div>
+    </div>
+
+  </div>
 
   <script src="script.js"></script>
 </body>

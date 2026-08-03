@@ -4,7 +4,7 @@
   "description": "",
   "main": "analyzer.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node test_analyzer.js && node test_api.js && node test_health.js",
     "start": "node server.js"
   },
   "keywords": [],
