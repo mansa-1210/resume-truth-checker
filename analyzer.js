@@ -232,8 +232,9 @@ function analyzeResume(text) {
   }
 
   // small penalty for verification-required claims (small impact)
+  // Verification flags should not heavily penalize the score — make the impact minimal.
   if (typeof verificationCount !== 'undefined' && verificationCount > 0) {
-    score -= Math.min(15, verificationCount * 3); // each verification subtracts 3 up to -15
+    score -= Math.min(5, verificationCount * 1); // each verification subtracts 1 up to -5 (minimal impact)
   }
 
   // small bonus for mixed cases: if there is evidence and also vague, reduce penalty by a small amount
