@@ -6,7 +6,20 @@ const analyzeResume = require('./analyzer');
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '50kb' }));
+app.use(express.json({ limit: '200kb' }));
+
+// file upload and extraction libs (lazily required when available)
+let multer, pdfParse, mammoth, os, fs;
+try {
+  multer = require('multer');
+  pdfParse = require('pdf-parse');
+  mammoth = require('mammoth');
+  os = require('os');
+  fs = require('fs');
+} catch (e) {
+  // if optional libs are not installed, upload endpoint will return an error
+  console.warn('Optional file-extraction libraries not installed. Upload endpoint will be disabled.');
+}
 
 // lightweight request logging (no sensitive data)
 app.use((req, res, next) => {
@@ -66,6 +79,88 @@ app.post('/analyze', (req, res) => {
         console.error('Unexpected /analyze error:', err && err.message ? err.message : err);
         return res.status(500).json({ error: 'Server error' });
     }
+});
+
+// Upload endpoint (multipart/form-data) - extracts text from uploaded files and runs the analyzer
+app.post('/upload', async (req, res) => {
+  if (!multer || !pdfParse || !mammoth) {
+    return res.status(501).json({ error: 'Upload support not available on this deployment' });
+  }
+
+  const tmpDir = path.join(__dirname, 'tmp_uploads');
+  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+
+  const storage = multer.diskStorage({
+    destination: tmpDir,
+    filename: (req, file, cb) => {
+      const ts = Date.now();
+      const safeName = (file.originalname || 'upload').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      cb(null, `${ts}-${safeName}`);
+    }
+  });
+
+  const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (req, file, cb) => {
+      const allowed = ['application/pdf','text/plain','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (allowed.includes(file.mimetype) || /\.(pdf|txt|docx?|DOCX?)$/i.test(file.originalname || '')) cb(null, true);
+      else cb(new Error('Unsupported file type'), false);
+    }
+  }).single('resumeFile');
+
+  upload(req, res, async function(err) {
+    if (err) {
+      console.error('Upload error:', err.message || err);
+      return res.status(400).json({ error: err.message || 'Upload failed' });
+    }
+
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const filePath = req.file.path;
+    const originalName = req.file.originalname;
+    const size = req.file.size;
+
+    let extracted = '';
+    try {
+      if (/\.pdf$/i.test(originalName) || req.file.mimetype === 'application/pdf') {
+        const data = fs.readFileSync(filePath);
+        const pdfRes = await pdfParse(data);
+        extracted = pdfRes.text || '';
+      } else if (/\.docx?$/i.test(originalName) || req.file.mimetype.includes('word')) {
+        const mammothRes = await mammoth.extractRawText({ path: filePath });
+        extracted = mammothRes.value || '';
+      } else if (/\.txt$/i.test(originalName) || req.file.mimetype === 'text/plain') {
+        extracted = fs.readFileSync(filePath, 'utf8');
+      } else {
+        throw new Error('Unsupported file type for extraction');
+      }
+
+      // Run analyzer (do not persist uploaded content by default)
+      const analysis = analyzeResume(extracted || '');
+
+      // prepare response including metadata
+      const response = {
+        filename: originalName,
+        size,
+        extractedLength: (extracted || '').length,
+        issues: analysis.issues || [],
+        suggestions: analysis.suggestions || [],
+        score: typeof analysis.score === 'number' ? analysis.score : null,
+        rating: analysis.rating || '',
+        claims: analysis.claims || [],
+        extractedText: extracted || ''
+      };
+
+      res.json(response);
+    } catch (e) {
+      console.error('Extraction error:', e && e.message ? e.message : e);
+      return res.status(500).json({ error: 'Failed to extract text from the uploaded file' });
+    } finally {
+      // cleanup temporary file
+      try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (e) { /* ignore */ }
+    }
+  });
 });
 
 // Health endpoint

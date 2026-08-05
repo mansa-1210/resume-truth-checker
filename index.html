@@ -11,16 +11,25 @@
 
     <div class="controls">
       <textarea id="resumeText" placeholder="Paste your resume here"></textarea>
-      <div class="control-row">
-        <button id="clearBtn" type="button">Clear</button>
-        <button id="analyzeBtn" type="button">Analyze</button>
+
+        <div class="control-row">
+          <div style="flex:1">
+            <label for="fileInput" class="upload-label">Upload Resume</label>
+            <input id="fileInput" type="file" accept=".pdf,.doc,.docx,.txt" />
+            <div id="uploadInfo" class="upload-info"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button id="clearBtn" type="button">Clear</button>
+            <button id="analyzeBtn" type="button">Analyze</button>
+          </div>
+        </div>
+
+        <div id="error" class="hidden"></div>
       </div>
-      <div id="error" class="hidden"></div>
-    </div>
 
-    <div id="loading" class="hidden">Analyzing &hellip;</div>
+      <div id="loading" class="hidden">Analyzing &hellip;</div>
 
-    <div id="results" class="hidden">
+      <div id="results" class="hidden">
       <div class="summary">
         <div class="score-block">
           <h3>Credibility Score</h3>
@@ -42,7 +51,24 @@
         </div>
       </div>
 
-      <div id="claimsList"></div>
+      <div class="view-controls" style="margin-top:12px; display:flex; gap:12px; align-items:center;">
+        <label><input type="radio" name="viewMode" value="original" checked /> Original Resume</label>
+        <label><input type="radio" name="viewMode" value="highlighted" /> Highlighted Resume</label>
+        <label><input type="radio" name="viewMode" value="suggestions" /> Improved Suggestions</label>
+        <div style="margin-left:auto; display:flex; gap:8px;">
+          <button id="downloadJson">Download JSON</button>
+          <button id="copyAll">Copy All</button>
+          <button id="printReport">Print</button>
+        </div>
+      </div>
+
+      <div id="resumeViews" style="margin-top:12px; display:flex; gap:12px; flex-direction:column;">
+        <div id="originalResume" class="resume-view" style="display:block; white-space:pre-wrap; border:1px solid #eef2ff; padding:12px; border-radius:8px; background:#fff"></div>
+        <div id="highlightedResume" class="resume-view" style="display:none; white-space:pre-wrap; border:1px solid #eef2ff; padding:12px; border-radius:8px; background:#fff"></div>
+        <div id="improvedSuggestionsView" class="resume-view" style="display:none;"></div>
+      </div>
+
+      <div id="claimsList" style="margin-top:16px"></div>
 
       <div id="suggestions"></div>
     </div>
