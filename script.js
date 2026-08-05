@@ -11,6 +11,20 @@ function setLoading(loading) {
   document.getElementById('results').classList.toggle('hidden', loading);
 }
 
+// Remove duplicate claims while preserving order. Normalize by lowercased trimmed text + phrase.
+function dedupeClaims(claims) {
+  if (!claims || claims.length === 0) return [];
+  const seen = new Set();
+  const out = [];
+  for (const c of claims) {
+    const key = ((c.text || '') + '||' + (c.phrase || '')).replace(/\s+/g, ' ').trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(c);
+  }
+  return out;
+}
+
 function renderClaims(claims) {
   const container = document.getElementById('claimsList');
   container.innerHTML = '';
@@ -79,8 +93,8 @@ function analyzeResume() {
     }
     const data = await res.json();
 
-    // populate summary
-    const claims = data.claims || [];
+    // populate summary (deduplicate identical claims for clearer UI)
+    const claims = dedupeClaims(data.claims || []);
     const total = claims.length;
     const evidenceCount = claims.filter(c=>c.category==='EVIDENCE_SUPPORTED').length;
     const vagueCount = claims.filter(c=>c.category==='VAGUE_CLAIM').length;
