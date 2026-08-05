@@ -144,9 +144,7 @@ function processAnalysis(data, sourceText) {
       const cur = document.createElement('div'); cur.innerHTML = '<strong>Current statement:</strong> ' + escapeHtml(c.text);
       const prob = document.createElement('div'); prob.innerHTML = '<strong>Problem:</strong> ' + escapeHtml((c.phrases||[]).join(', ') + ' — ' + (c.categories||[]).join(', '));
       const rewrite = document.createElement('div'); rewrite.innerHTML = '<strong>Suggested rewrite:</strong> ' + escapeHtml((c.suggestions||[]).join(' / '));
-      const copyBtn = document.createElement('button'); copyBtn.className='copy-btn'; copyBtn.textContent='Copy Rewrite';
-      copyBtn.addEventListener('click', ()=>{ navigator.clipboard.writeText((c.suggestions||[]).join('\n')); copyBtn.textContent='Copied'; setTimeout(()=>copyBtn.textContent='Copy Rewrite',1200); });
-      card.appendChild(cur); card.appendChild(prob); card.appendChild(rewrite); card.appendChild(copyBtn);
+      card.appendChild(cur); card.appendChild(prob); card.appendChild(rewrite);
       improved.appendChild(card);
       anyCards.push(card);
     }
@@ -351,7 +349,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById('originalResume').style.display = v==='original' ? 'block' : 'none';
     document.getElementById('highlightedResume').style.display = v==='highlighted' ? 'block' : 'none';
     document.getElementById('improvedSuggestionsView').style.display = v==='suggestions' ? 'block' : 'none';
-  }));
+
+      // ensure colors update in dark mode for dynamically inserted content
+      if (document.body.classList.contains('dark')) {
+        document.querySelectorAll('.resume-view, .claim, .suggest-card, .upload-card').forEach(el=> el.classList.add('dark'));
+      } else {
+        document.querySelectorAll('.resume-view, .claim, .suggest-card, .upload-card').forEach(el=> el.classList.remove('dark'));
+      }
+    }));
 
   // exports: only keep Copy All
   const copyBtn = document.getElementById('copyAll');
