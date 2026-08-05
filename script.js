@@ -132,23 +132,36 @@ function processAnalysis(data, sourceText) {
 
   renderClaims(claims);
 
-  const sug = document.getElementById('suggestions');
-  sug.innerHTML = '';
+  // Build Improved Suggestions view (show all improvement cards together)
+  const improved = document.getElementById('improvedSuggestionsView');
+  improved.innerHTML = '';
+  const header = document.createElement('h3'); header.textContent = 'Improved Suggestions'; improved.appendChild(header);
+  // create card per claim that has suggestion(s)
+  const anyCards = [];
+  claims.forEach((c, i) => {
+    if (c.suggestions && c.suggestions.length>0) {
+      const card = document.createElement('div'); card.className = 'suggest-card';
+      const cur = document.createElement('div'); cur.innerHTML = '<strong>Current statement:</strong> ' + escapeHtml(c.text);
+      const prob = document.createElement('div'); prob.innerHTML = '<strong>Problem:</strong> ' + escapeHtml((c.phrases||[]).join(', ') + ' — ' + (c.categories||[]).join(', '));
+      const rewrite = document.createElement('div'); rewrite.innerHTML = '<strong>Suggested rewrite:</strong> ' + escapeHtml((c.suggestions||[]).join(' / '));
+      const copyBtn = document.createElement('button'); copyBtn.className='copy-btn'; copyBtn.textContent='Copy Rewrite';
+      copyBtn.addEventListener('click', ()=>{ navigator.clipboard.writeText((c.suggestions||[]).join('\n')); copyBtn.textContent='Copied'; setTimeout(()=>copyBtn.textContent='Copy Rewrite',1200); });
+      card.appendChild(cur); card.appendChild(prob); card.appendChild(rewrite); card.appendChild(copyBtn);
+      improved.appendChild(card);
+      anyCards.push(card);
+    }
+  });
+  // if analyzer also returned general suggestions, include them
   if (data.suggestions && data.suggestions.length>0) {
-    const h = document.createElement('h3'); h.textContent = 'Suggestions'; sug.appendChild(h);
-    data.suggestions.forEach((s, i)=>{
-      // create improved suggestion card with copy
+    data.suggestions.forEach(s => {
       const card = document.createElement('div'); card.className='suggest-card';
-      const cur = document.createElement('div'); cur.className='cur'; cur.innerHTML = '<strong>Suggestion:</strong> '+escapeHtml(s);
-      const copyBtn = document.createElement('button'); copyBtn.className='copy-btn'; copyBtn.textContent='Copy Suggestion';
-      copyBtn.addEventListener('click', ()=>{ navigator.clipboard.writeText(s); copyBtn.textContent='Copied'; setTimeout(()=>copyBtn.textContent='Copy Suggestion',1200); });
-      card.appendChild(cur); card.appendChild(copyBtn);
-      sug.appendChild(card);
+      card.innerHTML = '<div><strong>Suggestion:</strong> ' + escapeHtml(s) + '</div>';
+      improved.appendChild(card);
+      anyCards.push(card);
     });
-    // add copy all button
-    const copyAll = document.createElement('button'); copyAll.textContent='Copy All Suggestions'; copyAll.className='copy-btn';
-    copyAll.addEventListener('click', ()=>{ navigator.clipboard.writeText(data.suggestions.join('\n\n')); copyAll.textContent='Copied'; setTimeout(()=>copyAll.textContent='Copy All Suggestions',1200); });
-    sug.appendChild(copyAll);
+  }
+  if (anyCards.length===0) {
+    const p = document.createElement('div'); p.textContent = 'No suggestions detected.'; improved.appendChild(p);
   }
 
   // render resume views
@@ -215,28 +228,38 @@ function buildHighlightedResume(text, claims) {
   const el = document.getElementById('highlightedResume');
   el.innerHTML = '';
   if (!text) return;
-  // split into sentences (simple splitter)
-  const sentences = text.replace(/\r\n|\r/g,'\n').split(/(?<=[.!?])\s+/);
+  // preserve paragraphs and line breaks
+  const paragraphs = text.replace(/\r\n|\r/g,'\n').split(/\n{2,}/);
   const norm = s=> (s||'').replace(/\s+/g,' ').trim().toLowerCase();
   const claimMap = new Map();
   claims.forEach((c, i)=>{ claimMap.set(norm(c.text), { idx:i, claim:c }); });
 
-  sentences.forEach((s, i) => {
-    const n = norm(s);
-    const span = document.createElement('span');
-    span.className = 'resume-sentence';
-    if (claimMap.has(n)) {
-      const info = claimMap.get(n);
-      span.classList.add('claim-match');
-      span.dataset.claimId = info.idx;
-      // choose class by category
-      if (info.claim.categories.includes('EVIDENCE_SUPPORTED')) span.classList.add('match-evidence');
-      else if (info.claim.categories.includes('VAGUE_CLAIM')) span.classList.add('match-vague');
-      else if (info.claim.categories.includes('POTENTIALLY_EXAGGERATED')) span.classList.add('match-exag');
-      else if (info.claim.categories.includes('REQUIRES_VERIFICATION')) span.classList.add('match-verify');
-    }
-    span.textContent = s + ' ';
-    el.appendChild(span);
+  paragraphs.forEach((para, pidx) => {
+    // within paragraph, split into sentences but keep punctuation
+    const sentences = para.split(/(?<=[.!?])\s+/);
+    const pdiv = document.createElement('div'); pdiv.className='resume-paragraph';
+    sentences.forEach((s, i) => {
+      const n = norm(s);
+      const span = document.createElement('span');
+      span.className = 'resume-sentence';
+      if (claimMap.has(n)) {
+        const info = claimMap.get(n);
+        span.classList.add('claim-match');
+        span.dataset.claimId = info.idx;
+        // choose class by category
+        if (info.claim.categories.includes('EVIDENCE_SUPPORTED')) span.classList.add('match-evidence');
+        else if (info.claim.categories.includes('VAGUE_CLAIM')) span.classList.add('match-vague');
+        else if (info.claim.categories.includes('POTENTIALLY_EXAGGERATED')) span.classList.add('match-exag');
+        else if (info.claim.categories.includes('REQUIRES_VERIFICATION')) span.classList.add('match-verify');
+      }
+      span.textContent = s;
+      pdiv.appendChild(span);
+      // add space between sentences
+      pdiv.appendChild(document.createTextNode(' '));
+    });
+    el.appendChild(pdiv);
+    // add paragraph break
+    el.appendChild(document.createElement('br'));
   });
 }
 
@@ -330,47 +353,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById('improvedSuggestionsView').style.display = v==='suggestions' ? 'block' : 'none';
   }));
 
-  // filter tabs for claims
-  function setupFilters(){
-    const allBtn = document.createElement('button'); allBtn.textContent='All'; allBtn.className='filter active';
-    const evBtn = document.createElement('button'); evBtn.textContent='Evidence'; evBtn.className='filter';
-    const vBtn = document.createElement('button'); vBtn.textContent='Vague'; vBtn.className='filter';
-    const exBtn = document.createElement('button'); exBtn.textContent='Exaggerated'; exBtn.className='filter';
-    const vrBtn = document.createElement('button'); vrBtn.textContent='Verification'; vrBtn.className='filter';
-    const container = document.createElement('div'); container.className='filter-row'; container.style.display='flex'; container.style.gap='8px'; container.style.marginBottom='8px';
-    container.append(allBtn, evBtn, vBtn, exBtn, vrBtn);
-    const claimsPanel = document.getElementById('claimsList');
-    claimsPanel.parentNode.insertBefore(container, claimsPanel);
-
-    container.addEventListener('click',(e)=>{
-      const btn = e.target.closest('button'); if (!btn) return;
-      container.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      const key = btn.textContent.toLowerCase();
-      // re-render from last analysis
-      const data = window.__lastAnalysis || {};
-      let merged = mergeClaims(data.claims || []);
-      if (key==='evidence') merged = merged.filter(c=>c.categories && c.categories.includes('EVIDENCE_SUPPORTED'));
-      else if (key==='vague') merged = merged.filter(c=>c.categories && c.categories.includes('VAGUE_CLAIM'));
-      else if (key==='exaggerated') merged = merged.filter(c=>c.categories && c.categories.includes('POTENTIALLY_EXAGGERATED'));
-      else if (key==='verification') merged = merged.filter(c=>c.categories && c.categories.includes('REQUIRES_VERIFICATION'));
-      renderClaims(merged);
-    });
-  }
-  setupFilters();
-
-  // exports
-  document.getElementById('downloadJson').addEventListener('click', ()=>{
-    const data = window.__lastAnalysis || {};
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'analysis.json'; a.click(); URL.revokeObjectURL(url);
-  });
-  document.getElementById('copyAll').addEventListener('click', ()=>{
+  // exports: only keep Copy All
+  const copyBtn = document.getElementById('copyAll');
+  if (copyBtn) copyBtn.addEventListener('click', ()=>{
     const data = window.__lastAnalysis || {};
     navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(()=> alert('Analysis copied to clipboard'));
   });
-  document.getElementById('printReport').addEventListener('click', ()=>{ window.print(); });
 
   // dark mode toggle
   const darkToggle = document.getElementById('darkModeToggle');
