@@ -279,6 +279,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const dropzone = document.getElementById('dropzone');
   const browseBtn = document.getElementById('browseBtn');
   browseBtn.addEventListener('click',(e)=>{ e.preventDefault(); fileInput.click(); });
+  const uploadBtn = document.getElementById('uploadBtn'); if (uploadBtn) uploadBtn.addEventListener('click', (e)=>{ e.preventDefault(); fileInput.click(); });
 
   function handleFileSelection(f){
     const info = document.getElementById('uploadInfo');
