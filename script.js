@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
     analyzeResume();
   });
-  clearBtn.addEventListener('click', ()=>{ textarea.value=''; document.getElementById('results').classList.add('hidden'); document.getElementById('error').classList.add('hidden'); document.getElementById('originalResume').textContent=''; document.getElementById('highlightedResume').innerHTML=''; analyzeBtn.disabled = true; window.__uploadExtractedText=''; window.__lastAnalysis = null; });
+  clearBtn.addEventListener('click', ()=>{ textarea.value=''; document.getElementById('results').classList.add('hidden'); document.getElementById('error').classList.add('hidden'); document.getElementById('originalResume').textContent=''; document.getElementById('highlightedResume').innerHTML=''; analyzeBtn.disabled = true; window.__uploadExtractedText=''; window.__lastAnalysis = null; document.getElementById('uploadInfo').innerHTML=''; });
 
   // enable analyze when textarea has content
   textarea.addEventListener('input', ()=>{ const v = textarea.value || ''; document.getElementById('charCount').textContent = v.length; analyzeBtn.disabled = v.trim().length === 0; });
@@ -281,9 +281,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const info = document.getElementById('uploadInfo');
     info.innerHTML = '';
     if (!f) return;
-    if (f.size > 5*1024*1024) { info.innerHTML = '<div class="error-card">File too large (max 5MB)</div>'; return; }
+    if (f.size > 5*1024*1024) { info.innerHTML = '<div class="notify-error">File too large (max 5MB)</div>'; return; }
 
-    info.innerHTML = `<div class="upload-card">\n      <div class="upload-meta">\n        <strong>${escapeHtml(f.name)}</strong> — ${Math.round(f.size/1024)} KB\n      </div>\n      <div class="upload-status">Preparing upload...</div>\n    </div>`;
+    info.innerHTML = `<div class="upload-card">\n      <div class="icon">☁️</div>\n      <div class="meta">\n        <div style="font-weight:700">${escapeHtml(f.name)}</div>\n        <div style="font-size:13px;color:var(--muted)">${Math.round(f.size/1024)} KB</div>\n        <div class="upload-status notify-info">Preparing upload…</div>\n      </div>\n    </div>`;
 
     const xhr = new XMLHttpRequest();
     const form = new FormData();
@@ -298,13 +298,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
         // store extracted text for later analyze and for export
         window.__uploadExtractedText = data.extractedText || '';
         window.__lastAnalysis = Object.assign({}, data, { claims: data.claims || [] });
-        info.innerHTML = `<div class="upload-card success">\n          <div class="upload-meta">\n            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M20 6L9 17l-5-5\" stroke=\"#10B981\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>\n            <strong>${escapeHtml(f.name)}</strong> — ${Math.round(f.size/1024)} KB\n          </div>\n          <div class="upload-status">Extraction successful — ready for analysis</div>\n        </div>`;
+        info.innerHTML = `<div class="upload-card success">\n          <div class="icon">✓</div>\n          <div class="meta">\n            <div style="font-weight:700">${escapeHtml(f.name)}</div>\n            <div style="font-size:13px; color:var(--muted)">${Math.round(f.size/1024)} KB</div>\n            <div class="upload-status notify-success">Extraction successful — ready for analysis</div>\n          </div>\n        </div>`;
       } else {
-        try { const e = JSON.parse(xhr.responseText); info.innerHTML = `<div class="error-card">Upload failed: ${escapeHtml(e.error||xhr.statusText)}</div>`; }
-        catch(e){ info.innerHTML = '<div class="error-card">Upload failed</div>'; }
+        try { const e = JSON.parse(xhr.responseText); info.innerHTML = `<div class="notify-error">Upload failed: ${escapeHtml(e.error||xhr.statusText)}</div>`; }
+        catch(e){ info.innerHTML = '<div class="notify-error">Upload failed</div>'; }
       }
     };
-    xhr.onerror = function(){ info.innerHTML = '<div class="error-card">Upload error</div>'; };
+    xhr.onerror = function(){ info.innerHTML = '<div class="notify-error">Upload error</div>'; };
     xhr.send(form);
   }
 

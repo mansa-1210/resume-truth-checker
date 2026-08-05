@@ -52,9 +52,23 @@ textarea { width:100%; min-height:240px; border-radius:10px; border:1px solid #e
 .drop-text{ font-weight:700; margin-top:6px; }
 .drop-note{ color:var(--muted); font-size:13px; margin-top:6px; }
 
-.upload-card{ padding:10px; border-radius:8px; border:1px solid var(--soft); display:flex; flex-direction:column; gap:6px; }
-.upload-card.success{ border-color:rgba(16,185,129,0.15); background:rgba(16,185,129,0.02); }
-.error-card{ padding:10px; border-radius:8px; background: #fff5f5; border:1px solid #fecaca; color: #b91c1c; }
+.upload-card{ padding:12px; border-radius:12px; border:1px solid var(--soft); display:flex; gap:12px; align-items:center; }
+.upload-card .meta { display:flex; flex-direction:column; gap:4px; }
+.upload-card .icon { width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:rgba(14,165,233,0.06); color:var(--accent); font-weight:700; }
+.upload-card.success{ border-color:rgba(16,185,129,0.15); background:linear-gradient(180deg, rgba(16,185,129,0.02), rgba(255,255,255,0)); }
+.notify-error{ padding:12px; border-radius:10px; background:#fff5f5; border:1px solid #fecaca; color:#991b1b; box-shadow:0 6px 18px rgba(239,68,68,0.04); }
+.notify-info{ padding:12px; border-radius:10px; background:#f8fbff; border:1px solid #e6f0ff; color:#0f172a; }
+.notify-success{ padding:12px; border-radius:10px; background:rgba(16,185,129,0.03); border:1px solid rgba(16,185,129,0.12); color:#064e3b; }
+
+/* button polish */
+button { transition: transform .08s ease, box-shadow .12s ease; }
+button:hover:not([disabled]){ transform: translateY(-2px); box-shadow:0 8px 20px rgba(2,6,23,0.06); }
+.copy-btn{ background: linear-gradient(180deg,var(--accent), #1e40af); color:#fff; }
+
+/* subtle loading */
+.loading-skel{ height:14px; width:100%; background:linear-gradient(90deg,#eef2ff 25%, #f8fbff 37%, #eef2ff 63%); background-size:400% 100%; animation: skel 1.6s linear infinite; border-radius:6px; }
+@keyframes skel{ 0%{background-position:100% 0}100%{background-position:-100% 0} }
+
 
 #results{ margin-top:20px; }
 .summary{ display:flex; gap:16px; align-items:stretch; }
