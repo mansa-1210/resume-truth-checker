@@ -170,11 +170,12 @@ function updateGauge(score){
 }
 
 function analyzeResume() {
-  const text = document.getElementById('resumeText').value || '';
+  // prefer uploaded extracted text if present, else fallback to textarea
+  const text = (window.__uploadExtractedText && window.__uploadExtractedText.length>0) ? window.__uploadExtractedText : (document.getElementById('resumeText') ? document.getElementById('resumeText').value || '' : '');
   const errorBox = document.getElementById('error');
   errorBox.classList.add('hidden');
   if (!text.trim()) {
-    errorBox.textContent = 'Please paste resume text before analyzing.';
+    errorBox.textContent = 'No resume text available to analyze. Please upload a resume.';
     errorBox.classList.remove('hidden');
     return;
   }
@@ -266,7 +267,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
     analyzeResume();
   });
-  clearBtn.addEventListener('click', ()=>{ textarea.value=''; document.getElementById('results').classList.add('hidden'); document.getElementById('error').classList.add('hidden'); document.getElementById('originalResume').textContent=''; document.getElementById('highlightedResume').innerHTML=''; analyzeBtn.disabled = true; window.__uploadExtractedText=''; window.__lastAnalysis = null; document.getElementById('uploadInfo').innerHTML=''; });
+  if (clearBtn) {
+    clearBtn.addEventListener('click', ()=>{ textarea.value=''; document.getElementById('results').classList.add('hidden'); document.getElementById('error').classList.add('hidden'); document.getElementById('originalResume').textContent=''; document.getElementById('highlightedResume').innerHTML=''; analyzeBtn.disabled = true; window.__uploadExtractedText=''; window.__lastAnalysis = null; document.getElementById('uploadInfo').innerHTML=''; });
+  }
 
   // enable analyze when textarea has content
   textarea.addEventListener('input', ()=>{ const v = textarea.value || ''; document.getElementById('charCount').textContent = v.length; analyzeBtn.disabled = v.trim().length === 0; });
@@ -299,6 +302,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
         window.__uploadExtractedText = data.extractedText || '';
         window.__lastAnalysis = Object.assign({}, data, { claims: data.claims || [] });
         info.innerHTML = `<div class="upload-card success">\n          <div class="icon">✓</div>\n          <div class="meta">\n            <div style="font-weight:700">${escapeHtml(f.name)}</div>\n            <div style="font-size:13px; color:var(--muted)">${Math.round(f.size/1024)} KB</div>\n            <div class="upload-status notify-success">Extraction successful — ready for analysis</div>\n          </div>\n        </div>`;
+        // auto-run analyze when extraction successful
+        try { analyzeResume(); } catch (e) { console.error('Auto analyze failed', e); }
+
       } else {
         try { const e = JSON.parse(xhr.responseText); info.innerHTML = `<div class="notify-error">Upload failed: ${escapeHtml(e.error||xhr.statusText)}</div>`; }
         catch(e){ info.innerHTML = '<div class="notify-error">Upload failed</div>'; }
