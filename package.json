@@ -16,6 +16,7 @@
     "mammoth": "^1.12.0",
     "multer": "^2.2.0",
     "pdf-parse": "^2.4.5",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "word-extractor": "^1.0.4"
   }
 }

@@ -7,33 +7,69 @@
 <body>
   
   <div class="container">
-    <h2>Resume Truth Checker</h2>
+    <header class="topbar">
+      <h2>Resume Truth Checker</h2>
+      <div class="top-controls">
+        <label class="mode-toggle"><input type="checkbox" id="darkModeToggle" /> Dark</label>
+      </div>
+    </header>
 
-    <div class="controls">
-      <textarea id="resumeText" placeholder="Paste your resume here"></textarea>
+    <div class="input-tabs">
+      <button class="tab active" data-tab="paste">Paste Resume</button>
+      <button class="tab" data-tab="upload">Upload Resume</button>
+    </div>
 
-        <div class="control-row">
-          <div style="flex:1">
-            <label for="fileInput" class="upload-label">Upload Resume</label>
-            <input id="fileInput" type="file" accept=".pdf,.doc,.docx,.txt" />
-            <div id="uploadInfo" class="upload-info"></div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px">
+    <div class="controls layout-grid">
+      <div class="panel" id="pastePanel">
+        <textarea id="resumeText" placeholder="Paste your resume here"></textarea>
+        <div class="row">
+          <div class="charcount" id="charCount">0</div>
+          <div class="actions">
             <button id="clearBtn" type="button">Clear</button>
-            <button id="analyzeBtn" type="button">Analyze</button>
           </div>
         </div>
-
-        <div id="error" class="hidden"></div>
       </div>
 
-      <div id="loading" class="hidden">Analyzing &hellip;</div>
+      <div class="panel" id="uploadPanel" style="display:none">
+        <div id="dropzone" class="dropzone"> 
+          <div class="drop-content"> 
+            <div class="cloud-icon">☁️</div>
+            <div class="drop-text">Drag & Drop Resume Here</div>
+            <div class="drop-sub">or <button id="browseBtn" class="link-btn">Browse Files</button></div>
+            <div class="drop-note">Supported: PDF, DOC, DOCX, TXT — Max 5MB</div>
+          </div>
+        </div>
+        <input id="fileInput" type="file" accept=".pdf,.doc,.docx,.txt" style="display:none" />
+        <div id="uploadInfo" class="upload-info"></div>
+      </div>
 
-      <div id="results" class="hidden">
+      <div class="panel actions-panel">
+        <div class="big-actions">
+          <button id="analyzeBtn" type="button" disabled>Analyze</button>
+        </div>
+        <div id="loading" class="hidden">Analyzing &hellip;</div>
+        <div id="error" class="hidden"></div>
+      </div>
+    </div>
+
+    <div id="results" class="hidden">
       <div class="summary">
         <div class="score-block">
           <h3>Credibility Score</h3>
-          <div id="scoreNumber">--</div>
+          <div id="gaugeWrap">
+            <svg id="scoreGauge" width="120" height="120" viewBox="0 0 120 120">
+              <defs>
+                <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#F59E0B" />
+                  <stop offset="50%" stop-color="#10B981" />
+                  <stop offset="100%" stop-color="#2563EB" />
+                </linearGradient>
+              </defs>
+              <circle cx="60" cy="60" r="48" stroke="#eef2ff" stroke-width="12" fill="none" />
+              <circle id="gaugeArc" cx="60" cy="60" r="48" stroke="url(#g1)" stroke-width="12" fill="none" stroke-linecap="round" transform="rotate(-90 60 60)" stroke-dasharray="301.59" stroke-dashoffset="301.59" />
+              <text id="scoreNumber" x="60" y="60" text-anchor="middle" dy="6" font-size="20" font-weight="700">--</text>
+            </svg>
+          </div>
           <div id="rating">--</div>
           <p class="disclaimer">Score indicates evidence quality, not truth. It does not determine whether a resume is truthful.</p>
         </div>

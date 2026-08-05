@@ -125,7 +125,9 @@ function processAnalysis(data, sourceText) {
   document.getElementById('exagCount').textContent = exagCount;
   document.getElementById('verifyCount').textContent = verifyCount;
 
-  document.getElementById('scoreNumber').textContent = (data.score!=null)?data.score + '/100':'--';
+  // update score gauge and rating
+  const scoreVal = (data.score!=null)? data.score : null;
+  updateGauge(scoreVal);
   document.getElementById('rating').textContent = data.rating || '--';
 
   renderClaims(claims);
@@ -134,17 +136,37 @@ function processAnalysis(data, sourceText) {
   sug.innerHTML = '';
   if (data.suggestions && data.suggestions.length>0) {
     const h = document.createElement('h3'); h.textContent = 'Suggestions'; sug.appendChild(h);
-    data.suggestions.forEach(s=>{
+    data.suggestions.forEach((s, i)=>{
+      // create improved suggestion card with copy
       const card = document.createElement('div'); card.className='suggest-card';
-      card.innerHTML = '<div>'+escapeHtml(s)+'</div>';
+      const cur = document.createElement('div'); cur.className='cur'; cur.innerHTML = '<strong>Suggestion:</strong> '+escapeHtml(s);
+      const copyBtn = document.createElement('button'); copyBtn.className='copy-btn'; copyBtn.textContent='Copy Suggestion';
+      copyBtn.addEventListener('click', ()=>{ navigator.clipboard.writeText(s); copyBtn.textContent='Copied'; setTimeout(()=>copyBtn.textContent='Copy Suggestion',1200); });
+      card.appendChild(cur); card.appendChild(copyBtn);
       sug.appendChild(card);
     });
+    // add copy all button
+    const copyAll = document.createElement('button'); copyAll.textContent='Copy All Suggestions'; copyAll.className='copy-btn';
+    copyAll.addEventListener('click', ()=>{ navigator.clipboard.writeText(data.suggestions.join('\n\n')); copyAll.textContent='Copied'; setTimeout(()=>copyAll.textContent='Copy All Suggestions',1200); });
+    sug.appendChild(copyAll);
   }
 
   // render resume views
   document.getElementById('originalResume').textContent = data.extractedText || sourceText || '';
   buildHighlightedResume(data.extractedText || sourceText || '', claims);
   document.getElementById('results').classList.remove('hidden');
+}
+
+// update gauge arc
+function updateGauge(score){
+  const arc = document.getElementById('gaugeArc');
+  const txt = document.getElementById('scoreNumber');
+  if (!arc || score==null){ txt.textContent='--'; arc.style.strokeDashoffset = 301.59; return; }
+  const max = 100; const pct = Math.max(0, Math.min(100, score));
+  const circumference = 2 * Math.PI * 48; // r=48
+  const offset = circumference - (circumference * (pct/100));
+  arc.style.strokeDashoffset = offset;
+  txt.textContent = pct + '%';
 }
 
 function analyzeResume() {
@@ -234,40 +256,63 @@ function scrollToClaim(idx) {
 
 // wire buttons and upload handling
 document.addEventListener('DOMContentLoaded', ()=>{
-  document.getElementById('analyzeBtn').addEventListener('click', analyzeResume);
-  document.getElementById('clearBtn').addEventListener('click', ()=>{ document.getElementById('resumeText').value=''; document.getElementById('results').classList.add('hidden'); document.getElementById('error').classList.add('hidden'); document.getElementById('originalResume').textContent=''; document.getElementById('highlightedResume').innerHTML=''; });
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const textarea = document.getElementById('resumeText');
+  analyzeBtn.addEventListener('click', ()=>{
+    // if uploaded extracted text exists, use it to populate textarea (ensures analyze always uses current text)
+    if (window.__uploadExtractedText && window.__uploadExtractedText.length > 0) {
+      textarea.value = window.__uploadExtractedText;
+    }
+    analyzeResume();
+  });
+  clearBtn.addEventListener('click', ()=>{ textarea.value=''; document.getElementById('results').classList.add('hidden'); document.getElementById('error').classList.add('hidden'); document.getElementById('originalResume').textContent=''; document.getElementById('highlightedResume').innerHTML=''; analyzeBtn.disabled = true; window.__uploadExtractedText=''; window.__lastAnalysis = null; });
+
+  // enable analyze when textarea has content
+  textarea.addEventListener('input', ()=>{ const v = textarea.value || ''; document.getElementById('charCount').textContent = v.length; analyzeBtn.disabled = v.trim().length === 0; });
 
   // upload handler
   const fileInput = document.getElementById('fileInput');
-  fileInput.addEventListener('change', (e)=>{
-    const f = e.target.files[0];
-    const info = document.getElementById('uploadInfo');
-    info.textContent = '';
-    if (!f) return;
-    if (f.size > 10*1024*1024) { info.textContent = 'File too large (max 10MB)'; return; }
-    info.textContent = `Selected: ${f.name} (${Math.round(f.size/1024)} KB)`;
+  const dropzone = document.getElementById('dropzone');
+  const browseBtn = document.getElementById('browseBtn');
+  browseBtn.addEventListener('click',(e)=>{ e.preventDefault(); fileInput.click(); });
 
-    // upload via XHR to track progress
+  function handleFileSelection(f){
+    const info = document.getElementById('uploadInfo');
+    info.innerHTML = '';
+    if (!f) return;
+    if (f.size > 5*1024*1024) { info.innerHTML = '<div class="error-card">File too large (max 5MB)</div>'; return; }
+
+    info.innerHTML = `<div class="upload-card">\n      <div class="upload-meta">\n        <strong>${escapeHtml(f.name)}</strong> — ${Math.round(f.size/1024)} KB\n      </div>\n      <div class="upload-status">Preparing upload...</div>\n    </div>`;
+
     const xhr = new XMLHttpRequest();
     const form = new FormData();
     form.append('resumeFile', f);
     xhr.open('POST','/upload');
-    xhr.upload.onprogress = function(ev){ if (ev.lengthComputable) { info.textContent = `Uploading ${f.name}: ${Math.round(ev.loaded/ev.total*100)}%`; } };
+    xhr.upload.onprogress = function(ev){ if (ev.lengthComputable) { const pct = Math.round(ev.loaded/ev.total*100); const s = info.querySelector('.upload-status'); if (s) s.textContent = `Uploading: ${pct}%`; } };
     xhr.onload = function(){
       if (xhr.status === 200) {
         const data = JSON.parse(xhr.responseText);
         document.getElementById('resumeText').value = data.extractedText || '';
-        info.textContent = `Uploaded: ${f.name} — extracted ${data.extractedLength} chars`;
-        // process analysis returned by the upload endpoint (do not persist uploaded text)
-        processAnalysis(data, data.extractedText || '');
+        document.getElementById('analyzeBtn').disabled = false;
+        // store extracted text for later analyze and for export
+        window.__uploadExtractedText = data.extractedText || '';
+        window.__lastAnalysis = Object.assign({}, data, { claims: data.claims || [] });
+        info.innerHTML = `<div class="upload-card success">\n          <div class="upload-meta">\n            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M20 6L9 17l-5-5\" stroke=\"#10B981\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>\n            <strong>${escapeHtml(f.name)}</strong> — ${Math.round(f.size/1024)} KB\n          </div>\n          <div class="upload-status">Extraction successful — ready for analysis</div>\n        </div>`;
       } else {
-        try { const e = JSON.parse(xhr.responseText); info.textContent = 'Upload failed: '+(e.error||xhr.statusText); }
-        catch(e){ info.textContent = 'Upload failed'; }
+        try { const e = JSON.parse(xhr.responseText); info.innerHTML = `<div class="error-card">Upload failed: ${escapeHtml(e.error||xhr.statusText)}</div>`; }
+        catch(e){ info.innerHTML = '<div class="error-card">Upload failed</div>'; }
       }
     };
-    xhr.onerror = function(){ info.textContent = 'Upload error'; };
+    xhr.onerror = function(){ info.innerHTML = '<div class="error-card">Upload error</div>'; };
     xhr.send(form);
-  });
+  }
+
+  fileInput.addEventListener('change', (e)=>{ handleFileSelection(e.target.files[0]); });
+
+  dropzone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', (e)=>{ e.preventDefault(); dropzone.classList.remove('dragover'); });
+  dropzone.addEventListener('drop', (e)=>{ e.preventDefault(); dropzone.classList.remove('dragover'); const f = e.dataTransfer.files && e.dataTransfer.files[0]; handleFileSelection(f); });
 
   // view mode toggles
   const radios = document.querySelectorAll('input[name=viewMode]');
@@ -278,6 +323,35 @@ document.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById('improvedSuggestionsView').style.display = v==='suggestions' ? 'block' : 'none';
   }));
 
+  // filter tabs for claims
+  function setupFilters(){
+    const allBtn = document.createElement('button'); allBtn.textContent='All'; allBtn.className='filter active';
+    const evBtn = document.createElement('button'); evBtn.textContent='Evidence'; evBtn.className='filter';
+    const vBtn = document.createElement('button'); vBtn.textContent='Vague'; vBtn.className='filter';
+    const exBtn = document.createElement('button'); exBtn.textContent='Exaggerated'; exBtn.className='filter';
+    const vrBtn = document.createElement('button'); vrBtn.textContent='Verification'; vrBtn.className='filter';
+    const container = document.createElement('div'); container.className='filter-row'; container.style.display='flex'; container.style.gap='8px'; container.style.marginBottom='8px';
+    container.append(allBtn, evBtn, vBtn, exBtn, vrBtn);
+    const claimsPanel = document.getElementById('claimsList');
+    claimsPanel.parentNode.insertBefore(container, claimsPanel);
+
+    container.addEventListener('click',(e)=>{
+      const btn = e.target.closest('button'); if (!btn) return;
+      container.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const key = btn.textContent.toLowerCase();
+      // re-render from last analysis
+      const data = window.__lastAnalysis || {};
+      let merged = mergeClaims(data.claims || []);
+      if (key==='evidence') merged = merged.filter(c=>c.categories && c.categories.includes('EVIDENCE_SUPPORTED'));
+      else if (key==='vague') merged = merged.filter(c=>c.categories && c.categories.includes('VAGUE_CLAIM'));
+      else if (key==='exaggerated') merged = merged.filter(c=>c.categories && c.categories.includes('POTENTIALLY_EXAGGERATED'));
+      else if (key==='verification') merged = merged.filter(c=>c.categories && c.categories.includes('REQUIRES_VERIFICATION'));
+      renderClaims(merged);
+    });
+  }
+  setupFilters();
+
   // exports
   document.getElementById('downloadJson').addEventListener('click', ()=>{
     const data = window.__lastAnalysis || {};
@@ -287,7 +361,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
   document.getElementById('copyAll').addEventListener('click', ()=>{
     const data = window.__lastAnalysis || {};
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(()=> alert('Analysis copied to clipboard')); 
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(()=> alert('Analysis copied to clipboard'));
   });
   document.getElementById('printReport').addEventListener('click', ()=>{ window.print(); });
+
+  // dark mode toggle
+  const darkToggle = document.getElementById('darkModeToggle');
+  darkToggle.addEventListener('change', (e)=>{ document.body.classList.toggle('dark', darkToggle.checked); });
 });

@@ -9,11 +9,12 @@ app.use(cors());
 app.use(express.json({ limit: '200kb' }));
 
 // file upload and extraction libs (lazily required when available)
-let multer, pdfParse, mammoth, os, fs;
+let multer, pdfParse, mammoth, os, fs, WordExtractor;
 try {
   multer = require('multer');
   pdfParse = require('pdf-parse');
   mammoth = require('mammoth');
+  WordExtractor = require('word-extractor');
   os = require('os');
   fs = require('fs');
 } catch (e) {
@@ -101,11 +102,13 @@ app.post('/upload', async (req, res) => {
 
   const upload = multer({
     storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
     fileFilter: (req, file, cb) => {
-      const allowed = ['application/pdf','text/plain','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      if (allowed.includes(file.mimetype) || /\.(pdf|txt|docx?|DOCX?)$/i.test(file.originalname || '')) cb(null, true);
-      else cb(new Error('Unsupported file type'), false);
+      const allowedExt = /\.(pdf|txt|docx?|DOCX?)$/i;
+      const mimetype = (file.mimetype || '').toLowerCase();
+      const allowedMime = ['application/pdf','text/plain','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (allowedMime.includes(mimetype) || allowedExt.test(file.originalname || '')) cb(null, true);
+      else cb(new Error('Unsupported file type. Supported: PDF, DOC, DOCX, TXT'), false);
     }
   }).single('resumeFile');
 
@@ -123,23 +126,38 @@ app.post('/upload', async (req, res) => {
 
     let extracted = '';
     try {
-      if (/\.pdf$/i.test(originalName) || req.file.mimetype === 'application/pdf') {
+      const lower = (originalName || '').toLowerCase();
+      if (lower.endsWith('.pdf') || req.file.mimetype === 'application/pdf') {
         const data = fs.readFileSync(filePath);
         const pdfRes = await pdfParse(data);
         extracted = pdfRes.text || '';
-      } else if (/\.docx?$/i.test(originalName) || req.file.mimetype.includes('word')) {
+      } else if (lower.endsWith('.docx') || req.file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
         const mammothRes = await mammoth.extractRawText({ path: filePath });
         extracted = mammothRes.value || '';
-      } else if (/\.txt$/i.test(originalName) || req.file.mimetype === 'text/plain') {
+      } else if (lower.endsWith('.doc') || req.file.mimetype === 'application/msword') {
+        // try to extract .doc using word-extractor
+        try {
+          const extractor = new WordExtractor();
+          const doc = extractor.extract(filePath);
+          extracted = (await doc.getBody()).toString() || '';
+        } catch (inner) {
+          console.error('DOC extraction failed:', inner && inner.message ? inner.message : inner);
+          throw new Error('DOC extraction failed; please convert .doc to .docx or PDF and try again.');
+        }
+      } else if (lower.endsWith('.txt') || req.file.mimetype === 'text/plain') {
         extracted = fs.readFileSync(filePath, 'utf8');
       } else {
         throw new Error('Unsupported file type for extraction');
       }
 
-      // Run analyzer (do not persist uploaded content by default)
-      const analysis = analyzeResume(extracted || '');
+      if (!extracted || extracted.trim().length === 0) {
+        throw new Error('No text could be extracted from the uploaded file');
+      }
 
-      // prepare response including metadata
+      // Return extracted text and analysis metadata (do NOT persist upload contents)
+      let analysis;
+      try { analysis = analyzeResume(extracted); } catch (e) { console.error('Analyzer error after extraction:', e); analysis = { issues: [], suggestions: [], score: null, rating: '', claims: [] }; }
+
       const response = {
         filename: originalName,
         size,
@@ -155,7 +173,7 @@ app.post('/upload', async (req, res) => {
       res.json(response);
     } catch (e) {
       console.error('Extraction error:', e && e.message ? e.message : e);
-      return res.status(500).json({ error: 'Failed to extract text from the uploaded file' });
+      return res.status(500).json({ error: e.message || 'Failed to extract text from the uploaded file' });
     } finally {
       // cleanup temporary file
       try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch (e) { /* ignore */ }
