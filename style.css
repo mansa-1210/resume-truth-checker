@@ -1,28 +1,19 @@
 /* Clean, light theme with improved spacing and readable fonts */
 :root{
-  --bg:#f7fafc; --card:#ffffff; --text:#0f172a; --muted:#64748b;
+  --bg:#f4f6f9; --card:#ffffff; --text:#0f172a; --muted:#64748b;
   --accent:#2563eb; --success:#10B981; --warn:#F59E0B; --danger:#EF4444; --verify:#3B82F6;
   --soft:#EEF2FF; --glass: rgba(15,23,42,0.04);
 }
 
-/* Dark theme variables override when body.dark is active */
-body.dark{
-  --bg:#071029;
-  --card:#061025;
-  --text:#e6eef8;
-  --muted:#9fb4c8;
-  --accent:#60a5fa;
-  --success:#34d399;
-  --soft: rgba(255,255,255,0.02);
-  --glass: rgba(255,255,255,0.03);
-}
+/* Remove legacy dark mode; keep variables for future use */
+/* To re-enable dark mode safely, adjust :root or add a .dark class override */
 
 body {
   margin: 0;
   padding: 20px;
   display: flex;
   justify-content: center;
-  background: var(--bg);
+  background: var(--bg); /* soft page background */
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color: var(--text);
 }
@@ -30,12 +21,14 @@ body {
 .container {
   width: 100%;
   max-width: 1100px;
-  background: var(--card);
+  background: transparent; /* let page bg show through, use cards for content */
   padding: 28px;
-  box-shadow: 0 10px 30px rgba(15,23,42,0.06);
   border-radius: 14px;
   box-sizing: border-box;
 }
+
+/* card wrapper for main content area to provide white card with soft shadow */
+.main-card { background: var(--card); padding: 20px; border-radius:12px; box-shadow: 0 6px 20px rgba(2,6,23,0.04); border:1px solid rgba(2,6,23,0.04); }
 
 .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .topbar h2{ margin:0; font-size:20px; }
@@ -49,9 +42,11 @@ body {
 @media(max-width:900px){ .layout-grid{ grid-template-columns:1fr; } }
 
 /* input row: paste and upload side-by-side */
-.input-row{ display:grid; grid-template-columns: 1fr 420px; gap:16px; align-items:start; }
+.input-row{ display:grid; grid-template-columns: 1fr 420px; gap:20px; align-items:stretch; }
 @media(max-width:900px){ .input-row{ grid-template-columns:1fr; } }
 .left-col, .right-col{ display:flex; flex-direction:column; gap:12px; }
+.left-col .panel, .right-col .panel { display:flex; flex-direction:column; height:100%; }
+.left-col textarea { flex:1 1 auto; min-height:320px; }
 
 /* primary button style */
 button.primary{ padding:10px 16px; border-radius:10px; border:none; color:#fff; background:linear-gradient(180deg,var(--accent), #1e40af); }

@@ -350,12 +350,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     document.getElementById('highlightedResume').style.display = v==='highlighted' ? 'block' : 'none';
     document.getElementById('improvedSuggestionsView').style.display = v==='suggestions' ? 'block' : 'none';
 
-      // ensure colors update in dark mode for dynamically inserted content
-      if (document.body.classList.contains('dark')) {
-        document.querySelectorAll('.resume-view, .claim, .suggest-card, .upload-card').forEach(el=> el.classList.add('dark'));
-      } else {
-        document.querySelectorAll('.resume-view, .claim, .suggest-card, .upload-card').forEach(el=> el.classList.remove('dark'));
-      }
     }));
 
   // exports: only keep Copy All
