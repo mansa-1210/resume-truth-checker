@@ -8,7 +8,7 @@ function escapeHtml(str) {
 
 function setLoading(loading) {
   document.getElementById('loading').classList.toggle('hidden', !loading);
-  document.getElementById('results').classList.toggle('hidden', loading);
+  if (loading) document.getElementById('results').classList.add('hidden');
 }
 
 // Merge claims by normalized sentence text; aggregate phrases/reasons into one claim card
@@ -107,11 +107,74 @@ function renderClaims(claims) {
   });
 }
 
+function buildResultsHTML() {
+  return `
+    <div class="summary">
+      <div class="score-block">
+        <h3>Credibility Score</h3>
+        <div id="gaugeWrap">
+          <svg id="scoreGauge" width="120" height="120" viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#F59E0B" />
+                <stop offset="50%" stop-color="#10B981" />
+                <stop offset="100%" stop-color="#2563EB" />
+              </linearGradient>
+            </defs>
+            <circle cx="60" cy="60" r="48" stroke="#eef2ff" stroke-width="12" fill="none" />
+            <circle id="gaugeArc" cx="60" cy="60" r="48" stroke="url(#g1)" stroke-width="12" fill="none" stroke-linecap="round" transform="rotate(-90 60 60)" stroke-dasharray="301.59" stroke-dashoffset="301.59" />
+            <text id="scoreNumber" x="60" y="60" text-anchor="middle" dy="6" font-size="20" font-weight="700">--</text>
+          </svg>
+        </div>
+        <div id="rating">--</div>
+        <p class="disclaimer">Score indicates evidence quality, not truth. It does not determine whether a resume is truthful.</p>
+      </div>
+      <div class="stats-block">
+        <h3>Summary</h3>
+        <ul id="summaryList">
+          <li>Total Claims: <span id="totalClaims">0</span></li>
+          <li>Evidence Supported: <span id="evidenceCount">0</span></li>
+          <li>Vague Claims: <span id="vagueCount">0</span></li>
+          <li>Potentially Exaggerated: <span id="exagCount">0</span></li>
+          <li>Requires Verification: <span id="verifyCount">0</span></li>
+          <li>Consistency Issues: <span id="consistencyCount">0</span></li>
+          <li>Skill Evidence Issues: <span id="skillCount">0</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="view-controls" style="margin-top:12px; display:flex; gap:12px; align-items:center;">
+      <label><input type="radio" name="viewMode" value="original" checked /> Original Resume</label>
+      <label><input type="radio" name="viewMode" value="highlighted" /> Highlighted Resume</label>
+      <label><input type="radio" name="viewMode" value="suggestions" /> Improved Suggestions</label>
+      <div style="margin-left:auto; display:flex; gap:8px;">
+        <button id="copyAll">Copy All</button>
+      </div>
+    </div>
+
+    <div id="resumeViews" style="margin-top:12px; display:flex; gap:12px; flex-direction:column;">
+      <div id="originalResume" class="resume-view" style="display:block; white-space:pre-wrap;"></div>
+      <div id="highlightedResume" class="resume-view" style="display:none; white-space:pre-wrap;"></div>
+      <div id="improvedSuggestionsView" class="resume-view" style="display:none;"></div>
+    </div>
+
+    <div id="claimsList" style="margin-top:16px"></div>
+  `;
+}
+
 function processAnalysis(data, sourceText) {
   document.getElementById('loading').classList.add('hidden');
   const merged = mergeClaims(data.claims || []);
   const claims = merged;
   window.__lastAnalysis = Object.assign({}, data, { claims: claims });
+
+  // Build results HTML if it doesn't exist yet
+  const resultsDiv = document.getElementById('results');
+  if (resultsDiv.innerHTML.trim() === '') {
+    resultsDiv.innerHTML = buildResultsHTML();
+    // Re-attach event listeners for new elements
+    attachResultsEventListeners();
+  }
 
   const total = claims.length;
   const evidenceCount = claims.filter(c=>c.categories&&c.categories.includes('EVIDENCE_SUPPORTED')).length;
@@ -165,7 +228,7 @@ function processAnalysis(data, sourceText) {
   // render resume views
   document.getElementById('originalResume').textContent = data.extractedText || sourceText || '';
   buildHighlightedResume(data.extractedText || sourceText || '', claims);
-  document.getElementById('results').classList.remove('hidden');
+  resultsDiv.classList.remove('hidden');
 }
 
 // update gauge arc
@@ -276,8 +339,31 @@ function scrollToClaim(idx) {
   }
 }
 
+function attachResultsEventListeners() {
+  // view mode toggles
+  const radios = document.querySelectorAll('input[name=viewMode]');
+  radios.forEach(r=> r.addEventListener('change', ()=>{
+    const v = document.querySelector('input[name=viewMode]:checked').value;
+    document.getElementById('originalResume').style.display = v==='original' ? 'block' : 'none';
+    document.getElementById('highlightedResume').style.display = v==='highlighted' ? 'block' : 'none';
+    document.getElementById('improvedSuggestionsView').style.display = v==='suggestions' ? 'block' : 'none';
+  }));
+
+  // copy button
+  const copyBtn = document.getElementById('copyAll');
+  if (copyBtn) copyBtn.addEventListener('click', ()=>{
+    const data = window.__lastAnalysis || {};
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(()=> alert('Analysis copied to clipboard'));
+  });
+}
+
 // wire buttons and upload handling
 document.addEventListener('DOMContentLoaded', ()=>{
+  // Clear all placeholder content from results section on page load
+  const resultsDiv = document.getElementById('results');
+  resultsDiv.innerHTML = '';
+  resultsDiv.classList.add('hidden');
+  
   const analyzeBtn = document.getElementById('analyzeBtn');
   const clearBtn = document.getElementById('clearBtn');
   const textarea = document.getElementById('resumeText');
@@ -289,7 +375,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
     analyzeResume();
   });
   if (clearBtn) {
-    clearBtn.addEventListener('click', ()=>{ textarea.value=''; document.getElementById('results').classList.add('hidden'); document.getElementById('error').classList.add('hidden'); document.getElementById('originalResume').textContent=''; document.getElementById('highlightedResume').innerHTML=''; analyzeBtn.disabled = true; window.__uploadExtractedText=''; window.__lastAnalysis = null; document.getElementById('uploadInfo').innerHTML=''; });
+    clearBtn.addEventListener('click', ()=>{ 
+      textarea.value=''; 
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '';
+      resultsDiv.classList.add('hidden'); 
+      document.getElementById('error').classList.add('hidden'); 
+      analyzeBtn.disabled = true; 
+      window.__uploadExtractedText=''; 
+      window.__lastAnalysis = null; 
+      document.getElementById('uploadInfo').innerHTML=''; 
+    });
   }
 
   // enable analyze when textarea has content
@@ -324,8 +420,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         window.__uploadExtractedText = data.extractedText || '';
         window.__lastAnalysis = Object.assign({}, data, { claims: data.claims || [] });
         info.innerHTML = `<div class="upload-card success">\n          <div class="icon">✓</div>\n          <div class="meta">\n            <div style="font-weight:700">${escapeHtml(f.name)}</div>\n            <div style="font-size:13px; color:var(--muted)">${Math.round(f.size/1024)} KB</div>\n            <div class="upload-status notify-success">Extraction successful — ready for analysis</div>\n          </div>\n        </div>`;
-        // auto-run analyze when extraction successful
-        try { analyzeResume(); } catch (e) { console.error('Auto analyze failed', e); }
+        // DO NOT auto-run analyze - wait for user to click Analyze button
 
       } else {
         try { const e = JSON.parse(xhr.responseText); info.innerHTML = `<div class="notify-error">Upload failed: ${escapeHtml(e.error||xhr.statusText)}</div>`; }
@@ -341,25 +436,4 @@ document.addEventListener('DOMContentLoaded', ()=>{
   dropzone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropzone.classList.add('dragover'); });
   dropzone.addEventListener('dragleave', (e)=>{ e.preventDefault(); dropzone.classList.remove('dragover'); });
   dropzone.addEventListener('drop', (e)=>{ e.preventDefault(); dropzone.classList.remove('dragover'); const f = e.dataTransfer.files && e.dataTransfer.files[0]; handleFileSelection(f); });
-
-  // view mode toggles
-  const radios = document.querySelectorAll('input[name=viewMode]');
-  radios.forEach(r=> r.addEventListener('change', ()=>{
-    const v = document.querySelector('input[name=viewMode]:checked').value;
-    document.getElementById('originalResume').style.display = v==='original' ? 'block' : 'none';
-    document.getElementById('highlightedResume').style.display = v==='highlighted' ? 'block' : 'none';
-    document.getElementById('improvedSuggestionsView').style.display = v==='suggestions' ? 'block' : 'none';
-
-    }));
-
-  // exports: only keep Copy All
-  const copyBtn = document.getElementById('copyAll');
-  if (copyBtn) copyBtn.addEventListener('click', ()=>{
-    const data = window.__lastAnalysis || {};
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(()=> alert('Analysis copied to clipboard'));
-  });
-
-  // dark mode toggle
-  const darkToggle = document.getElementById('darkModeToggle');
-  darkToggle.addEventListener('change', (e)=>{ document.body.classList.toggle('dark', darkToggle.checked); });
 });

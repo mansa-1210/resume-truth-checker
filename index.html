@@ -15,12 +15,12 @@
     </header>
 
     <div class="main-card">
-      <h3 style="margin:0 0 12px 0;">Upload Resume</h3>
+      <h3 style="margin:0 0 12px 0; color: #0f172a;">Upload Resume</h3>
 
-      <div class="controls input-row">
+      <div class="input-row">
       <div class="left-col">
         <div class="panel" id="pastePanel">
-          <label for="resumeText" style="font-weight:700; display:block; margin-bottom:8px;">Paste Resume</label>
+          <label for="resumeText" style="font-weight:700; display:block; margin-bottom:8px; color: #0f172a;">Paste Resume</label>
           <textarea id="resumeText" placeholder="Paste your resume here" ></textarea>
           <div class="row">
             <div class="charcount" id="charCount">0</div>
@@ -56,59 +56,7 @@
       </div>
     </div>
 
-    <div id="results" class="hidden">
-      <div class="summary">
-        <div class="score-block">
-          <h3>Credibility Score</h3>
-          <div id="gaugeWrap">
-            <svg id="scoreGauge" width="120" height="120" viewBox="0 0 120 120">
-              <defs>
-                <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="#F59E0B" />
-                  <stop offset="50%" stop-color="#10B981" />
-                  <stop offset="100%" stop-color="#2563EB" />
-                </linearGradient>
-              </defs>
-              <circle cx="60" cy="60" r="48" stroke="#eef2ff" stroke-width="12" fill="none" />
-              <circle id="gaugeArc" cx="60" cy="60" r="48" stroke="url(#g1)" stroke-width="12" fill="none" stroke-linecap="round" transform="rotate(-90 60 60)" stroke-dasharray="301.59" stroke-dashoffset="301.59" />
-              <text id="scoreNumber" x="60" y="60" text-anchor="middle" dy="6" font-size="20" font-weight="700">--</text>
-            </svg>
-          </div>
-          <div id="rating">--</div>
-          <p class="disclaimer">Score indicates evidence quality, not truth. It does not determine whether a resume is truthful.</p>
-        </div>
-        <div class="stats-block">
-          <h3>Summary</h3>
-          <ul id="summaryList">
-            <li>Total Claims: <span id="totalClaims">0</span></li>
-            <li>Evidence Supported: <span id="evidenceCount">0</span></li>
-            <li>Vague Claims: <span id="vagueCount">0</span></li>
-            <li>Potentially Exaggerated: <span id="exagCount">0</span></li>
-            <li>Requires Verification: <span id="verifyCount">0</span></li>
-            <li>Consistency Issues: <span id="consistencyCount">0</span></li>
-            <li>Skill Evidence Issues: <span id="skillCount">0</span></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="view-controls" style="margin-top:12px; display:flex; gap:12px; align-items:center;">
-        <label><input type="radio" name="viewMode" value="original" checked /> Original Resume</label>
-        <label><input type="radio" name="viewMode" value="highlighted" /> Highlighted Resume</label>
-        <label><input type="radio" name="viewMode" value="suggestions" /> Improved Suggestions</label>
-        <div style="margin-left:auto; display:flex; gap:8px;">
-          <button id="copyAll">Copy All</button>
-        </div>
-      </div>
-
-      <div id="resumeViews" style="margin-top:12px; display:flex; gap:12px; flex-direction:column;">
-        <div id="originalResume" class="resume-view" style="display:block; white-space:pre-wrap;"></div>
-                <div id="highlightedResume" class="resume-view" style="display:none; white-space:pre-wrap;"></div>
-        <div id="improvedSuggestionsView" class="resume-view" style="display:none;"></div>
-      </div>
-
-      <div id="claimsList" style="margin-top:16px"></div>
-
-    </div>
+    <div id="results" class="hidden"></div>
 
   </div>
 
